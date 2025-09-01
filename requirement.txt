@@ -1,0 +1,7 @@
+streamlit
+streamlit-mic-recorder
+langdetect
+google-generativeai
+google-cloud-speech
+google-cloud-texttospeech
+python-dotenv
