@@ -15,6 +15,17 @@ DetectorFactory.seed = 0
 
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\nesli\\PycharmProjects\\serafettindemo3\\serafettin-tts-projesi-b16a14771632.json"
+import json
+from google.oauth2 import service_account
+
+# Streamlit'in secrets'ından Google kimlik bilgilerini yükleme
+if 'google_credentials' in st.secrets:
+    creds_json = st.secrets["google_credentials"]
+    # JSON içeriğini bir dosyaya yazma
+    with open("google-credentials.json", "w") as f:
+        f.write(creds_json)
+    # Çevresel değişkeni ayarlama
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-credentials.json"
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -181,4 +192,5 @@ if user_input:
         if audio_bytes:
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
+
             st.markdown(audio_html, unsafe_allow_html=True)
