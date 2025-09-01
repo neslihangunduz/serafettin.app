@@ -16,14 +16,13 @@ import base64
 DetectorFactory.seed = 0
 
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
-# =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
 # Google Cloud kimlik bilgilerini yükleme (secrets.toml'dan)
 if 'google_credentials' in st.secrets:
     # Secrets'tan gelen veriyi doğrudan Python sözlüğü olarak kullan.
     creds_dict = st.secrets["google_credentials"]
     
     # Sözlüğü JSON dizesine dönüştürerek geçici bir dosyaya yaz
-    # Bu adımı, API'nin dosya beklemesi nedeniyle yapıyoruz.
+    # Bu adımı, Google API'lerinin dosya yolu beklemesi nedeniyle yapıyoruz.
     with open("google-credentials.json", "w") as f:
         json.dump(creds_dict, f, indent=4)
     
@@ -36,20 +35,6 @@ else:
 if 'GEMINI_API_KEY' in st.secrets:
     GEMINI_API_KEY = st.secrets['GEMINI_API_KEY']
 else:
-    load_dotenv()
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-# Gemini API'sini yapılandır
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-else:
-    st.error("GEMINI_API_KEY çevresel değişkeni veya secret'ı bulunamadı.")
-
-# Gemini API anahtarını yükle (secrets.toml'dan veya .env'den)
-# Streamlit Cloud'da secrets dosyası otomatik olarak yükleneceği için .env gerekmez
-if 'GEMINI_API_KEY' in st.secrets:
-    GEMINI_API_KEY = st.secrets['GEMINI_API_KEY']
-else:
     # Yerel geliştirme için .env dosyası
     load_dotenv()
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -59,7 +44,6 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 else:
     st.error("GEMINI_API_KEY çevresel değişkeni veya secret'ı bulunamadı.")
-
 
 # =================== KARAKTER TANIMI VE ÖZEL YANITLAR ===================
 identity_questions = ["kimsin", "sen kimsin", "bu kim", "kendini tanıt", "kim olduğunu söyle",
@@ -211,7 +195,6 @@ else:
 if st.session_state.is_listening:
     st.info("Şerafettin dinliyor... Konuşmaya başlayın.")
     
-    # `mic_recorder`'ı otomatik başlat ve dinlemeye devam et
     audio_dict = mic_recorder(
         start_prompt=" ",  
         stop_prompt=" ",   
@@ -223,7 +206,6 @@ if st.session_state.is_listening:
 
     if audio_dict and 'bytes' in audio_dict:
         st.session_state.audio_bytes = audio_dict['bytes']
-        # Sesi metne çevir ve cevapla
         with st.spinner("Sesi çözümlüyorum..."):
             user_input = transcribe_audio(st.session_state.audio_bytes)
             
@@ -241,7 +223,6 @@ if st.session_state.is_listening:
                     audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
                     st.markdown(audio_html, unsafe_allow_html=True)
             
-            # Sesi işledikten sonra, döngüyü yeniden başlatmak için state'i sıfırla
             st.session_state.audio_bytes = None
             st.rerun()
 
@@ -262,4 +243,3 @@ if text_input:
         audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
         audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
         st.markdown(audio_html, unsafe_allow_html=True)
-
