@@ -16,20 +16,34 @@ import base64
 DetectorFactory.seed = 0
 
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
+# =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
 # Google Cloud kimlik bilgilerini yükleme (secrets.toml'dan)
 if 'google_credentials' in st.secrets:
-    # Secrets'tan TOML tablosunu bir Python sözlüğüne dönüştür
+    # Secrets'tan gelen veriyi doğrudan Python sözlüğü olarak kullan.
     creds_dict = st.secrets["google_credentials"]
     
     # Sözlüğü JSON dizesine dönüştürerek geçici bir dosyaya yaz
-    creds_json_str = json.dumps(creds_dict, indent=4)
+    # Bu adımı, API'nin dosya beklemesi nedeniyle yapıyoruz.
     with open("google-credentials.json", "w") as f:
-        f.write(creds_json_str)
+        json.dump(creds_dict, f, indent=4)
     
     # Çevresel değişkeni ayarla
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-credentials.json"
 else:
     st.error("Google kimlik bilgileri Streamlit Secrets'ta bulunamadı. Lütfen 'google_credentials' secret'ını eklediğinizden emin olun.")
+
+# Gemini API anahtarını yükle (secrets.toml'dan veya .env'den)
+if 'GEMINI_API_KEY' in st.secrets:
+    GEMINI_API_KEY = st.secrets['GEMINI_API_KEY']
+else:
+    load_dotenv()
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Gemini API'sini yapılandır
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    st.error("GEMINI_API_KEY çevresel değişkeni veya secret'ı bulunamadı.")
 
 # Gemini API anahtarını yükle (secrets.toml'dan veya .env'den)
 # Streamlit Cloud'da secrets dosyası otomatik olarak yükleneceği için .env gerekmez
@@ -248,3 +262,4 @@ if text_input:
         audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
         audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
         st.markdown(audio_html, unsafe_allow_html=True)
+
