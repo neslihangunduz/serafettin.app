@@ -14,7 +14,7 @@ import base64
 DetectorFactory.seed = 0
 
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\nesli\\PycharmProjects\\serafettindemo3\\serafettin-tts-projesi-b16a14771632.json"
+#os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\nesli\\PycharmProjects\\serafettindemo3\\serafettin-tts-projesi-b16a14771632.json"
 import json
 from google.oauth2 import service_account
 
@@ -194,3 +194,4 @@ if user_input:
             audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
 
             st.markdown(audio_html, unsafe_allow_html=True)
+
