@@ -16,31 +16,20 @@ from google.cloud import texttospeech
 DetectorFactory.seed = 0
 
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
-# Streamlit secrets'tan Base64 ile kodlanmış kimlik bilgilerini al
 try:
     creds_b64 = st.secrets["GOOGLE_CREDENTIALS"]
-
-    # Base64 verisini çöz ve bir dict'e yükle
     creds_bytes = base64.b64decode(creds_b64)
     creds_dict = json.loads(creds_bytes)
-
-    # Geçici bir dosya oluştur ve JSON verisini yaz
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
         json.dump(creds_dict, f, indent=4)
         temp_file_path = f.name
-    
-    # Ortam değişkenini geçici dosyanın yoluyla ayarla
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
-    
 except KeyError:
     st.error("Google kimlik bilgileri bulunamadı. Lütfen '.streamlit/secrets.toml' dosyasını yapılandırın.")
     st.stop()
 except Exception as e:
     st.error(f"Kimlik bilgileri işlenirken bir hata oluştu: {e}")
     st.stop()
-
-# Bu satırı silin, artık gerekli değil:
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\nesli\\PycharmProjects\\serafettindemo3\\serafettin-tts-projesi-b16a14771632.json"
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -157,7 +146,7 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
         st.error(f"TTS sırasında bir hata oluştu: {e}")
         return None
 
-# GÜNCELLENMİŞ FONKSİYON: Sesi metne çevirir (daha sağlam ve doğrudan Google API'sini kullanır)
+# GÜNCELLENMİŞ FONKSIYON: Sesi metne çevirir
 def transcribe_audio(audio_bytes: bytes) -> str:
     try:
         client = google.cloud.speech.SpeechClient()
@@ -184,8 +173,15 @@ audio_dict = mic_recorder(start_prompt="Başla", stop_prompt="Dur", format="webm
 user_input = ""
 
 if audio_dict and 'bytes' in audio_dict:
-    st.write("Sesi çözümlüyorum...")
-    user_input = transcribe_audio(audio_dict['bytes'])
+    # Bu satırlar eklenerek ses verisi kontrolü yapılır
+    audio_data_size = len(audio_dict['bytes'])
+    st.write(f"Yakalanan ses verisinin boyutu: {audio_data_size} byte")
+
+    if audio_data_size > 0:
+        st.write("Sesi çözümlüyorum...")
+        user_input = transcribe_audio(audio_dict['bytes'])
+    else:
+        st.error("Ses verisi yakalanamadı. Lütfen mikrofonunuzu kontrol edin ve sayfaya mikrofon izni verdiğinizden emin olun.")
 
 user_text_input = st.text_input("Veya buraya yazarak bir şeyler sor:")
 if user_text_input:
