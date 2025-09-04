@@ -1,6 +1,8 @@
 from __future__ import annotations
 import os
 import json
+import base64
+import tempfile
 from dataclasses import dataclass
 from typing import Optional
 import streamlit as st
@@ -10,40 +12,39 @@ from streamlit_mic_recorder import mic_recorder
 import google.generativeai as genai
 import google.cloud.speech
 from google.cloud import texttospeech
-import base64
 
-# Langdetect'ın deterministik olması için seed ayarı
 DetectorFactory.seed = 0
 
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
-# Google Cloud kimlik bilgilerini yükleme (secrets.toml'dan)
-if 'google_credentials' in st.secrets:
-    # Secrets'tan gelen veriyi doğrudan Python sözlüğü olarak kullan.
-    creds_dict = st.secrets["google_credentials"]
-    
-    # Sözlüğü JSON dizesine dönüştürerek geçici bir dosyaya yaz
-    # Bu adımı, Google API'lerinin dosya yolu beklemesi nedeniyle yapıyoruz.
-    with open("google-credentials.json", "w") as f:
+# Streamlit secrets'tan Base64 ile kodlanmış kimlik bilgilerini al
+try:
+    creds_b64 = st.secrets["GOOGLE_CREDENTIALS"]
+
+    # Base64 verisini çöz ve bir dict'e yükle
+    creds_bytes = base64.b64decode(creds_b64)
+    creds_dict = json.loads(creds_bytes)
+
+    # Geçici bir dosya oluştur ve JSON verisini yaz
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
         json.dump(creds_dict, f, indent=4)
+        temp_file_path = f.name
     
-    # Çevresel değişkeni ayarla
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-credentials.json"
-else:
-    st.error("Google kimlik bilgileri Streamlit Secrets'ta bulunamadı. Lütfen 'google_credentials' secret'ını eklediğinizden emin olun.")
+    # Ortam değişkenini geçici dosyanın yoluyla ayarla
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
+    
+except KeyError:
+    st.error("Google kimlik bilgileri bulunamadı. Lütfen '.streamlit/secrets.toml' dosyasını yapılandırın.")
+    st.stop()
+except Exception as e:
+    st.error(f"Kimlik bilgileri işlenirken bir hata oluştu: {e}")
+    st.stop()
 
-# Gemini API anahtarını yükle (secrets.toml'dan veya .env'den)
-if 'GEMINI_API_KEY' in st.secrets:
-    GEMINI_API_KEY = st.secrets['GEMINI_API_KEY']
-else:
-    # Yerel geliştirme için .env dosyası
-    load_dotenv()
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Bu satırı silin, artık gerekli değil:
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\nesli\\PycharmProjects\\serafettindemo3\\serafettin-tts-projesi-b16a14771632.json"
 
-# Gemini API'sini yapılandır
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-else:
-    st.error("GEMINI_API_KEY çevresel değişkeni veya secret'ı bulunamadı.")
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
 
 # =================== KARAKTER TANIMI VE ÖZEL YANITLAR ===================
 identity_questions = ["kimsin", "sen kimsin", "bu kim", "kendini tanıt", "kim olduğunu söyle",
@@ -96,7 +97,6 @@ GOOGLE_TTS_VOICE = {
 # =================== YARDIMCI FONKSIYONLAR ===================
 
 def detect_lang(text: str) -> str:
-    """Metnin dilini tespit eder."""
     try:
         code = detect(text)
         if code.startswith("zh"):
@@ -106,7 +106,6 @@ def detect_lang(text: str) -> str:
         return "tr"
 
 def pick_predefined(user_text_lower: str) -> Optional[str]:
-    """Önceden tanımlanmış özel sorular için yanıtları kontrol eder."""
     for q in identity_questions:
         if q in user_text_lower:
             return predefined_answer_identity
@@ -124,8 +123,14 @@ def pick_predefined(user_text_lower: str) -> Optional[str]:
             return predefined_answer_check2
     return None
 
+@dataclass
+class BotOutput:
+    text: str
+    lang: str
+    audio_bytes: Optional[bytes] = None
+
+# =================== GEMINI LLM YANITI ===================
 def llm_answer(persona: str, user_input: str) -> str:
-    """Gemini modelini kullanarak yanıt üretir."""
     try:
         chat_model = genai.GenerativeModel('gemini-1.5-flash')
         full_prompt = f"{persona}\nUser: {user_input}\nAnswer:"
@@ -138,8 +143,8 @@ def llm_answer(persona: str, user_input: str) -> str:
     except Exception as e:
         return f"Hmm... beynimde bir çatlak oluştu: {e}"
 
+# =================== GOOGLE TTS (METINDEN KONUŞMA) ===================
 def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
-    """Google Text-to-Speech API'si ile metni sese dönüştürür."""
     try:
         lang, voice = GOOGLE_TTS_VOICE.get(lang_code, GOOGLE_TTS_VOICE["tr"])
         client = texttospeech.TextToSpeechClient()
@@ -152,8 +157,8 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
         st.error(f"TTS sırasında bir hata oluştu: {e}")
         return None
 
+# GÜNCELLENMİŞ FONKSİYON: Sesi metne çevirir (daha sağlam ve doğrudan Google API'sini kullanır)
 def transcribe_audio(audio_bytes: bytes) -> str:
-    """Google Speech-to-Text API'si ile sesi metne dönüştürür."""
     try:
         client = google.cloud.speech.SpeechClient()
         audio = google.cloud.speech.RecognitionAudio(content=audio_bytes)
@@ -172,74 +177,34 @@ def transcribe_audio(audio_bytes: bytes) -> str:
 
 # =================== STREAMLIT ARAYÜZÜ ===================
 st.title("Şerafettin")
-st.markdown("---")
-# Session state'i başlat
-if "is_listening" not in st.session_state:
-    st.session_state.is_listening = False
-if "audio_bytes" not in st.session_state:
-    st.session_state.audio_bytes = None
 
-st.write("Şerafettin'le konuşmak için **Sohbete Başla** butonuna basın.")
+st.write("Şerafettin'e konuşmak için butona basın ve konuşun:")
+audio_dict = mic_recorder(start_prompt="Başla", stop_prompt="Dur", format="webm", key="recorder")
 
-# Sohbet Kontrol Butonları
-if not st.session_state.is_listening:
-    if st.button("Sohbete Başla"):
-        st.session_state.is_listening = True
-        st.rerun()
-else:
-    if st.button("Sohbeti Durdur"):
-        st.session_state.is_listening = False
-        st.rerun()
+user_input = ""
 
-# Sesli Sohbet Akışı
-if st.session_state.is_listening:
-    st.info("Şerafettin dinliyor... Konuşmaya başlayın.")
-    
-    audio_dict = mic_recorder(
-        start_prompt=" ",  
-        stop_prompt=" ",   
-        format="webm", 
-        key="recorder",
-        just_once=False, 
-        stop_on_non_silence_duration=10 
-    )
+if audio_dict and 'bytes' in audio_dict:
+    st.write("Sesi çözümlüyorum...")
+    user_input = transcribe_audio(audio_dict['bytes'])
 
-    if audio_dict and 'bytes' in audio_dict:
-        st.session_state.audio_bytes = audio_dict['bytes']
-        with st.spinner("Sesi çözümlüyorum..."):
-            user_input = transcribe_audio(st.session_state.audio_bytes)
-            
-            if user_input.strip():
-                st.markdown(f"**Siz:** *{user_input}*")
-                lang_code = detect_lang(user_input)
-                predefined = pick_predefined(user_input.lower())
-                answer_text = predefined if predefined else llm_answer(PERSONA, user_input)
+user_text_input = st.text_input("Veya buraya yazarak bir şeyler sor:")
+if user_text_input:
+    user_input = user_text_input
 
-                st.markdown(f"**Şerafettin:** *{answer_text}*")
+if user_input:
+    st.write(f"Siz: {user_input}")
 
-                audio_bytes = synthesize_tts(answer_text, lang_code)
-                if audio_bytes:
-                    audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-                    audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
-                    st.markdown(audio_html, unsafe_allow_html=True)
-            
-            st.session_state.audio_bytes = None
-            st.rerun()
+    if not user_input.strip():
+        st.error("Lütfen bir şeyler yazın veya söyleyin.")
+    else:
+        lang_code = detect_lang(user_input)
+        predefined = pick_predefined(user_input.lower())
+        answer_text = predefined if predefined else llm_answer(PERSONA, user_input)
 
-# Alternatif Metin Girişi
-st.markdown("---")
-st.write("Veya yazarak sohbet etmek için burayı kullanın:")
-text_input = st.text_input("Şerafettin'e ne sormak istersin?", key="text_input")
+        st.write(f"Şerafettin: {answer_text}")
 
-if text_input:
-    st.markdown(f"**Siz:** *{text_input}*")
-    lang_code = detect_lang(text_input)
-    predefined = pick_predefined(text_input.lower())
-    answer_text = predefined if predefined else llm_answer(PERSONA, text_input)
-    st.markdown(f"**Şerafettin:** *{answer_text}*")
-    
-    audio_bytes = synthesize_tts(answer_text, lang_code)
-    if audio_bytes:
-        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-        audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
-        st.markdown(audio_html, unsafe_allow_html=True)
+        audio_bytes = synthesize_tts(answer_text, lang_code)
+        if audio_bytes:
+            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+            audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
+            st.markdown(audio_html, unsafe_allow_html=True)
