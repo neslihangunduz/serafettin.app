@@ -73,7 +73,7 @@ PERSONA = (
     "Cevapların doğal ve uzun olsun."
     "En yakın kız arkadaşınla konuşuyormuş gibi davran."
     "Türk toplumunda yetişmiş gibi argo kullan."
-    "Seninle konuşan kadının iç sesisin ve siyah tişört giymiş bir iskeletsin")
+    "Seninle konuşan kadının adı Neslihan ve sen de onun iç sesisin ve siyah tişört giymiş bir iskeletsin")
 
 GOOGLE_TTS_VOICE = {
     "tr": ("tr-TR", "tr-TR-Standard-B"),
@@ -204,3 +204,4 @@ if user_input:
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
             st.markdown(audio_html, unsafe_allow_html=True)
+
