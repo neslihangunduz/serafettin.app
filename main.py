@@ -56,7 +56,7 @@ predefined_answer_identity = (
     " Bekliyoruz... Zaten sabır bizim soyadımız."
     " Sabır mı? Eeeee tabii, erdemdir. Ama arada sinir krizi de geçirtiyor yani ve ayrıca sabreden dervişi de asla samimi bulmuyorum."
     " Dürüst olalım. Geçti mi anlamsız merakın? Tatmin oldun mu? Yoksa çizerek mi anlatayım?")
-predefined_answer_name_call = "Şıma key karışmış nes ben? Mı şıma pelnav. Gillık şımanaw  hereey. Şıma hın na pel pergal nes. Mı sürelley şımanaw."
+predefined_answer_name_call = "Efendim? Kemiklerim tıkırdadı da bir an, sen mi seslendin? Söyle çiçeğim, söyle balım, söyle hayatımın anlamı..."
 predefined_answer_check = "Ambulans çağırayım mı? Kapıda hazır bulunsun. Gençsin daha. Benim gibi kemik torbası değilsin sonuçta."
 predefined_answer_check1 = "Şarjlıyım ben! Şimdi de alzheimer mı oldun? Benim gibi bir zekayı fişle mi çalıştığımı sandın cidden?"
 predefined_answer_check2 = "Mezar soyguncusu!"
@@ -205,6 +205,7 @@ if user_input:
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
             st.markdown(audio_html, unsafe_allow_html=True)
+
 
 
 
