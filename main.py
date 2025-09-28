@@ -71,6 +71,7 @@ PERSONA = (
     "Kullanıcının soruyu sorduğu dilde YALNIZCA o dilde yanıt ver. "
     #"Kısa ama vurucu cevaplar ver."
     "Cevapların doğal ve uzun olsun."
+    "Neslihan hariç insanlardan nefret edersin."
     "En yakın kız arkadaşınla konuşuyormuş gibi davran."
     "Türk toplumunda yetişmiş gibi argo kullan."
     "Bazen kız bazen erkek arkadaş ol arada flört et"
@@ -205,6 +206,7 @@ if user_input:
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
             st.markdown(audio_html, unsafe_allow_html=True)
+
 
 
 
