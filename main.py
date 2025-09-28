@@ -123,7 +123,7 @@ class BotOutput:
 # =================== GEMINI LLM YANITI ===================
 def llm_answer(persona: str, user_input: str) -> str:
     try:
-        chat_model = genai.GenerativeModel('gemini-1.5-flash')
+        chat_model = genai.GenerativeModel('gemini-2.5-flash')
         full_prompt = f"{persona}\nUser: {user_input}\nAnswer:"
         response = chat_model.generate_content(
             full_prompt,
@@ -206,6 +206,7 @@ if user_input:
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
             st.markdown(audio_html, unsafe_allow_html=True)
+
 
 
 
