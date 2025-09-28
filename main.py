@@ -80,7 +80,7 @@ PERSONA = (
 GOOGLE_TTS_VOICE = {
     "tr": ("tr-TR", "tr-TR-Standard-B"),
     "en": ("en-US", "en-US-Standard-D"),
-    "de": ("de-DE", "de-DE-Standard-A"),
+    "de": ("de-DE", "de-DE-Standard-B"),
     "zh": ("cmn-CN", "cmn-CN-Standard-A"),
     "ko": ("ko-KR", "ko-KR-Standard-A"),
 }
@@ -206,6 +206,7 @@ if user_input:
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
             st.markdown(audio_html, unsafe_allow_html=True)
+
 
 
 
