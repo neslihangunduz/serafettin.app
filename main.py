@@ -6,7 +6,7 @@ import tempfile
 from dataclasses import dataclass
 from typing import Optional
 import streamlit as st
-from dotenv import load_dotenv
+# from dotenv import load_dotenv # Canlı ortamda gerekmez
 from langdetect import detect, DetectorFactory
 from streamlit_mic_recorder import mic_recorder
 import google.generativeai as genai
@@ -15,16 +15,23 @@ from google.cloud import texttospeech
 
 DetectorFactory.seed = 0
 
+# Geçici dosya yolunu global olarak tanımla
+temp_file_path = None
+
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
 try:
     # Google Cloud Kimlik Bilgileri (secrets.toml'dan yüklenir)
     creds_b64 = st.secrets["GOOGLE_CREDENTIALS"]
     creds_bytes = base64.b64decode(creds_b64)
     creds_dict = json.loads(creds_bytes)
+    
+    # Geçici JSON dosyası oluşturma
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
         json.dump(creds_dict, f, indent=4)
-        temp_file_path = f.name
+        temp_file_path = f.name # Dosya yolunu kaydet
+    
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
+
 except KeyError:
     st.error("Google kimlik bilgileri bulunamadı. Lütfen '.streamlit/secrets.toml' dosyasını yapılandırın.")
     st.stop()
@@ -32,11 +39,10 @@ except Exception as e:
     st.error(f"Kimlik bilgileri işlenirken bir hata oluştu: {e}")
     st.stop()
 
-# Gemini API Anahtarını Yükleme
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Gemini API Anahtarını Yükleme (secrets.toml'dan veya env'den otomatik alınır)
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY") # secrets.toml'dan almayı tercih et
 if not GEMINI_API_KEY:
-    st.error("GEMINI_API_KEY çevresel değişkeni (.env dosyası veya secrets.toml) bulunamadı.")
+    st.error("GEMINI_API_KEY bulunamadı. Lütfen 'secrets.toml' dosyanızı kontrol edin.")
     st.stop()
 genai.configure(api_key=GEMINI_API_KEY)
 
@@ -93,17 +99,6 @@ GOOGLE_TTS_VOICE = {
 
 # =================== YARDIMCI FONKSIYONLAR ===================
 
-def detect_lang(text: str) -> str:
-    """Metnin dil kodunu algılar."""
-    try:
-        code = detect(text)
-        if code.startswith("zh"):
-            return "zh"
-        # Google Speech-to-Text için sadece ilk iki harfi büyük harf yapar
-        return code.upper() if len(code) == 2 else code
-    except Exception:
-        return "TR"
-
 def get_tts_lang_code(text: str) -> str:
     """TTS için dil kodunu (küçük harf) algılar."""
     try:
@@ -138,18 +133,16 @@ def pick_predefined(user_text_lower: str) -> Optional[str]:
 def init_chat_session():
     """Streamlit session state'i ve Gemini chat session'ını başlatır."""
     if "chat_session" not in st.session_state:
-        # Chat modeli tanımlanır
+        # Chat modeli tanımlanır ve sistem talimatı (PERSONA) ayarlanır
         chat_model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=PERSONA)
         # Chat oturumu başlatılır
         st.session_state["chat_session"] = chat_model.start_chat()
-        st.session_state["messages"] = []
     return st.session_state["chat_session"]
 
 def llm_answer_with_history(user_input: str) -> str:
     """Konuşma geçmişi ile birlikte Gemini'ye soruyu gönderir."""
     chat = init_chat_session()
     try:
-        # Gecikmeyi azaltmak için akışsız (stream=False) yanıt kullanılır
         response = chat.send_message(
             user_input,
             generation_config=genai.GenerationConfig(temperature=0.7)
@@ -162,7 +155,6 @@ def llm_answer_with_history(user_input: str) -> str:
 def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
     """Google TTS kullanarak metni sese çevirir."""
     try:
-        # TTS için küçük harf dil kodunu kullanır
         lang, voice = GOOGLE_TTS_VOICE.get(lang_code, GOOGLE_TTS_VOICE["tr"])
         client = texttospeech.TextToSpeechClient()
         synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -171,21 +163,22 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
         response = client.synthesize_speech(input=synthesis_input, voice=voice_params, audio_config=audio_config)
         return response.audio_content
     except Exception as e:
+        # Bu hata genellikle API kotası veya yanlış dil kodu nedeniyle oluşur.
         st.error(f"TTS sırasında bir hata oluştu: {e}")
         return None
 
 # GÜNCELLENMİŞ FONKSIYON: Sesi metne çevirir
-def transcribe_audio(audio_bytes: bytes, lang_code: str) -> str:
-    """Google Speech-to-Text kullanarak sesi metne çevirir."""
+def transcribe_audio(audio_bytes: bytes) -> str:
+    """Google Speech-to-Text kullanarak sesi metne çevirir (Varsayılan: Türkçe)."""
     try:
-        # STT için büyük harf dil kodunu kullanır (örneğin: TR-TR)
-        language_code_stt = f"{lang_code}-{lang_code}" if len(lang_code) == 2 else lang_code
+        # Şimdilik sadece Türkçe konuşma tanıma kullanıyoruz. Çok dilli olması için dil kodunu dinamikleştirmemiz gerekir.
+        language_code_stt = "tr-TR" 
         client = google.cloud.speech.SpeechClient()
         audio = google.cloud.speech.RecognitionAudio(content=audio_bytes)
         config = google.cloud.speech.RecognitionConfig(
             encoding=google.cloud.speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
             sample_rate_hertz=48000,
-            language_code=language_code_stt # Dinamik dil kodu
+            language_code=language_code_stt
         )
         response = client.recognize(config=config, audio=audio)
         if response.results:
@@ -214,11 +207,10 @@ if audio_dict and 'bytes' in audio_dict:
 
     if audio_data_size > 0:
         st.info("Sesi çözümlüyorum...")
-        # Ses verisi üzerinden dili algılamak zor olduğu için, burada varsayılanı TR tutuyoruz
-        # veya kullanıcıdan ilk sesi Türkçe konuşmasını bekliyoruz.
-        lang_for_stt = "TR" 
         
-        transcribed_text = transcribe_audio(audio_dict['bytes'], lang_for_stt)
+        # Sesi metne çevir (Varsayılan: TR)
+        transcribed_text = transcribe_audio(audio_dict['bytes'])
+        
         if transcribed_text:
             user_input = transcribed_text
             input_source = "Ses"
@@ -242,7 +234,7 @@ if user_input:
     lang_code_tts = get_tts_lang_code(user_input)
     predefined = pick_predefined(user_input.lower())
     
-    # 3. Yanıtı Al (Önceden tanımlı veya LLM'den)
+    # 3. Yanıtı Al (Önceden tanımlı veya LLM'den - Artık Geçmişi Hatırlıyor)
     answer_text = predefined if predefined else llm_answer_with_history(user_input)
 
     # 4. Yanıtı Ekrana Bas
@@ -259,3 +251,9 @@ if user_input:
     # Text input'ı temizle (tekrar girmeyi kolaylaştırmak için)
     if input_source == "Yazı":
         st.session_state["text_input"] = ""
+
+
+# =================== TEMIZLIK ===================
+# Geçici olarak oluşturulan kimlik bilgisi dosyasını silme (önemli!)
+if temp_file_path and os.path.exists(temp_file_path):
+    os.remove(temp_file_path)
