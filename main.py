@@ -190,7 +190,7 @@ def transcribe_audio(audio_bytes: bytes) -> str:
 
 # =================== STREAMLIT ARAYÜZÜ ===================
 
-st.title("Şerafettin (İç Ses Protokolü v2.0)")
+st.title("Şerafettin (İç Ses Protokolü v0.7)")
 
 # Chat oturumunu başlat
 chat_session = init_chat_session()
@@ -228,7 +228,7 @@ if user_text_input:
 if user_input:
     
     # 1. Giriş Metnini Ekrana Bas
-    st.write(f"**Neslihan (Sen):** {user_input}")
+    st.write(f"**Neslihan :** {user_input}")
 
     # 2. Dil ve Önceden Tanımlı Cevap Kontrolü
     lang_code_tts = get_tts_lang_code(user_input)
@@ -257,3 +257,4 @@ if user_input:
 # Geçici olarak oluşturulan kimlik bilgisi dosyasını silme (önemli!)
 if temp_file_path and os.path.exists(temp_file_path):
     os.remove(temp_file_path)
+
