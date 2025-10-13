@@ -5,3 +5,11 @@ google-generativeai
 google-cloud-speech
 google-cloud-texttospeech
 python-dotenv
+streamlit
+google-genai
+streamlit-mic-recorder
+langdetect
+google-cloud-speech
+google-cloud-texttospeech
+pypdf
+python-docx
