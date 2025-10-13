@@ -19,6 +19,7 @@ try:
     from docx import Document
     PDF_DOCX_AVAILABLE = True
 except ImportError:
+    # Kullanıcıya bilgi verilir ve dosya yükleme özelliği devre dışı bırakılır
     st.warning("pypdf veya python-docx kütüphaneleri eksik. Sadece TXT, Yazı ve Ses girişleri çalışacaktır.")
     PDF_DOCX_AVAILABLE = False
 
@@ -235,8 +236,9 @@ def clear_chat_history():
     """Chat geçmişini ve Streamlit session state'i sıfırlar."""
     if "chat_session" in st.session_state:
         del st.session_state["chat_session"]
-    # Giriş alanlarını da temizle
-    st.session_state["text_input"] = "" 
+    # Hata önleme: Sadece 'text_input' anahtarı mevcutsa temizle
+    if "text_input" in st.session_state:
+        st.session_state["text_input"] = "" 
     st.rerun()
 
 # =================== STREAMLIT ARAYÜZÜ ===================
@@ -351,13 +353,16 @@ if user_input:
         audio_html = f'<audio autoplay="true" controls src="data:audio/mp3;base64,{audio_base64}"></audio>'
         st.markdown(audio_html, unsafe_allow_html=True)
     
-    # Text input'ı temizle
-    if input_source == "Yazı":
+    # HATA DÜZELTME: Sadece yazı ile gönderim yapıldıysa input'ı temizle ve session_state'i kontrol et
+    if input_source == "Yazı" and "text_input" in st.session_state:
         st.session_state["text_input"] = ""
 
 
 # =================== TEMIZLIK ===================
 # Geçici olarak oluşturulan kimlik bilgisi dosyasını silme (önemli!)
 if temp_file_path and os.path.exists(temp_file_path):
-    # Uygulama bitince temizlenir. Gerekli.
-    pass
+    try:
+        os.remove(temp_file_path)
+    except Exception:
+        # Silme hatası durumunda pas geç (Örn: Dosya kilitli olabilir)
+        pass
