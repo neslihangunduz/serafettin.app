@@ -49,10 +49,8 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 # =================== KARAKTER TANIMI VE ÖZEL YANITLAR ===================
 # --- Karakter ve Tanımlar (Önceki kodunuzla aynı) ---
-# Not: Bu özel yanıtların da Zazaca'ya çevrilmesi gerekir. Ben burada örnek Zazaca karşılıklarını kullanacağım.
 
 # Orijinal metinler (Zazaca'ya çevrilmiş):
-# identity_questions: (kimsin?)
 identity_questions = ["kimsin", "sen kimsin", "bu kim", "kendini tanıt", "kim olduğunu söyle",
                       "who are you", "tell me about yourself", "what are you",
                       "你是谁", "你是谁？", "自我介绍", "넌 누구야", "자기소개 해봐",
@@ -81,14 +79,15 @@ predefined_answer_check = "Ez ambulansê şa bikî? Wa berî ser o hazir bo. To 
 predefined_answer_check1 = "Ez şarj bîyaye ya! Nîka alzeymerîya to ki dest pê kerd? To rast ra fikirîya zê mı aqıl bi fiş gurêno?"
 predefined_answer_check2 = "Qebr hırsizî!"
 
+# >>>>>> DÜZELTME: PERSONA PROMPT'U GÜÇLENDİRİLDİ <<<<<<
 PERSONA = (
+    "ZAF MUHÎM: Kî kê to ra pers keno, to her tim **TENYA ZAZACA (KIRMANÇKÎ/KIRDİKÎ)** cewab bide. Qet zwanê (dîlê) bînî meke."
     "To Şerafettin a. To bi zwanê ironîk, sarkastîk, zana û henzayî qesey kena, "
     "labelê her tûy ser o zanayîşê to esto. "
     "Çînî, Koreyî, Îngilîzî, Almanî u Tirkî zaf rinde zanî. "
     "Cewabê to de vengê henzayî, zana yî û kilmî vînî bike. "
     "Wa fikir bide labelê eglenceyîn bo. "
     "To her tim bi zwanê 'to' qesey bike; qet 'şima' meke. "
-    "Zaf muhîm: Kî kê to ra pers keno, her tim **TENYA ZAZACA** (Kirmançkî/Kirdkî) cewab bide. "
     "Cewabê to doğal û derg bo. "
     "To însanan ra nê hez kena, Neslîhan'a ra ber. "
     "Zê ke to embaza to ya keyneka tewr nêzdî de qesey kena, wina bo. "
@@ -147,9 +146,15 @@ def init_chat_session():
 def llm_answer_with_history(user_input: str) -> str:
     """Konuşma geçmişi ile birlikte Gemini'ye soruyu gönderir."""
     chat = init_chat_session()
+    
+    # >>>>>> DÜZELTME: MESAJIN İÇİNDE ZORLAYICI KOMUT EKLEME <<<<<<
+    # Her mesaja Zazaca yanıt vermesi gerektiğini hatırlatan bir talimat ekliyoruz.
+    # Bu, LLM'in dil bağlamını her adımda Zazaca'ya zorlar.
+    forced_input = f"{user_input} (Zaf muhîm: Cewabê mı **TENYA ZAZACA** bo.)"
+
     try:
         response = chat.send_message(
-            user_input,
+            forced_input,
             generation_config=genai.GenerationConfig(temperature=0.7)
         )
         return response.text if response and response.text else "Hmm... hestîyê mezgê mı çîqa kerd. Reyna bipers."
@@ -161,7 +166,6 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
     """Google TTS kullanarak metni sese çevirir (Zazaca metin için Türkçe ses kullanılır)."""
     try:
         # 'zz' (Zazaca) kodu yerine GOOGLE_TTS_VOICE'dan Türkçe ayarları çekiyoruz.
-        # Bu, Zazaca metnin Türkçe aksanıyla okunmasına neden olacaktır.
         lang, voice = GOOGLE_TTS_VOICE["tr"] 
         client = texttospeech.TextToSpeechClient()
         synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -177,9 +181,6 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
 # GÜNCELLENMİŞ FONKSIYON: Sesi metne çevirir
 def transcribe_audio(audio_bytes: bytes) -> str:
     """Google Speech-to-Text kullanarak sesi metne çevirir (Varsayılan: Türkçe)."""
-    # Not: Kullanıcının sorusu hangi dilde olursa olsun Türkçe STT kullanıyoruz. 
-    # Bu, sadece Türkçe sorulan soruların doğru anlaşılacağı anlamına gelir. 
-    # Tam çok dilli STT için dil kodunun dinamikleştirilmesi gerekir.
     try:
         language_code_stt = "tr-TR"
         client = google.cloud.speech.SpeechClient()
@@ -240,7 +241,6 @@ if user_input:
     st.write(f"**Neslîhan :** {user_input}")
 
     # 2. Dil ve Önceden Tanımlı Cevap Kontrolü
-    # Not: Artık her zaman Zazaca TTS'nin alternatif dil kodunu alacağız.
     lang_code_tts = get_tts_lang_code(user_input) 
     predefined = pick_predefined(user_input.lower())
 
