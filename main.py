@@ -94,10 +94,10 @@ PERSONA = (
     "Tu hestiyekî bi tîşorta reş î. "
     "Zaf girîng: Karakterê xwe û axaftinên berê ji bîr MEKE! Her dem lihevhatî û sarkastîk be. Dîroka axaftinê bîne ber çav.") 
 
-# >>>>>> DÜZELTME: TTS SES KODU 'ckb-IQ-Standard-A' YERİNE 'ckb-IQ-Standard-B' KULLANILDI <<<<<<
+# >>>>>> GUHERTINA KODA DENGÎ: JI Standard B BO WAVENET B <<<<<<
 GOOGLE_TTS_VOICE = {
-    # Kürtçe (Central Kurdish - Soranî). 'ckb-IQ-Standard-A' (Xwelet) li 'ckb-IQ-Standard-B' (Ji bo Şerafettîn) hat guhertin.
-    "ku": ("ckb-IQ", "ckb-IQ-Standard-B"), 
+    # Kürtçe (Central Kurdish - Soranî). Vê carê em 'ckb-IQ-Wavenet-B' biceribînin. Wavenet dengên nûjen û kalîteyî ne.
+    "ku": ("ckb-IQ", "ckb-IQ-Wavenet-B"), 
     "tr": ("tr-TR", "tr-TR-Standard-D"), 
 }
 
@@ -155,7 +155,7 @@ def llm_answer_with_history(user_input: str) -> str:
 
 # =================== GOOGLE TTS (METINDEN KONUŞMA) ===================
 def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
-    """Google TTS kullanarak metni sese çevirir (Kürtçe ses kullanılır)."""
+    """Google TTS kullanarak metni sese çevirir (Kürtçe Wavenet sesi kullanılır)."""
     try:
         # Kürtçe (ku) ses ayarları çekiliyor
         lang, voice = GOOGLE_TTS_VOICE["ku"]
@@ -242,7 +242,7 @@ if user_input:
     # 4. Yanıtı Ekrana Bas
     st.write(f"**Şerafettîn (Dengê Hundirîn ê Te):** {answer_text}")
 
-    # 5. Ses Sentezi (Kürtçe metin, Kürtçe ses ile)
+    # 5. Ses Sentezi (Kürtçe metin, Kürtçe Wavenet sesi ile)
     audio_bytes = synthesize_tts(answer_text, lang_code_tts)
     if audio_bytes:
         audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
