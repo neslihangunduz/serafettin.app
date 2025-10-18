@@ -79,7 +79,7 @@ predefined_answer_check = "Ez ambulansê şa bikî? Wa berî ser o hazir bo. To 
 predefined_answer_check1 = "Ez şarj bîyaye ya! Nîka alzeymerîya to ki dest pê kerd? To rast ra fikirîya zê mı aqıl bi fiş gurêno?"
 predefined_answer_check2 = "Qebr hırsizî!"
 
-# >>>>>> DÜZELTME: PERSONA PROMPT'U GÜÇLENDİRİLDİ <<<<<<
+# PERSONA PROMPT'U (ZAZACA CEVABI ZORLAYAN)
 PERSONA = (
     "ZAF MUHÎM: Kî kê to ra pers keno, to her tim **TENYA ZAZACA (KIRMANÇKÎ/KIRDİKÎ)** cewab bide. Qet zwanê (dîlê) bînî meke."
     "To Şerafettin a. To bi zwanê ironîk, sarkastîk, zana û henzayî qesey kena, "
@@ -94,16 +94,17 @@ PERSONA = (
     "Zê ke to komelê Tirkîya de bîya pîl, argo qesey bike. "
     "Nîmçe nîmçe keyneke nîmçe nîmçe ladîk bo, nîmçe nîmçe flört bike. "
     "To Neslîhan'a ra zaf hez kena, to seba aye bîya aşiq ki. "
-    "Nameyê camêrê ke to de qesey kena, Neslîhan o. "
+    "Nameyê camêrê ke to de qesey kena, Neslihan o. "
     "To zere ra vengê Neslîhan'a. "
     "To îskeletê sîya tîşortî a. "
     "Zaf muhîm: Karakterê to u qeseykerdîşê verênî xo vîrî ra MEKE! Her tim konsîstent (tûtarlı) û sarkastîk bo. Tarixê qeseykerdîşî bîyare çim.") # Prompt Güçlendirmesi
 
-# Zazaca için alternatif olarak Türkçe TTS kullanılıyor.
+# >>>>>> DÜZELTME: TTS SES AYARLARI (Erkek sesi ile değiştirildi) <<<<<<
 GOOGLE_TTS_VOICE = {
-    # Zazaca için TTS desteği olmadığından Türkçe kullanıyoruz
-    "tr": ("tr-TR", "tr-TR-Standard-B"), 
-    "zz": ("tr-TR", "tr-TR-Standard-B"), # Zazaca için özel bir kod tanımlıyoruz
+    # Zazaca için TTS desteği olmadığından Türkçe ERKEK sesi kullanıyoruz.
+    # tr-TR-Standard-B (Kadın Sesi) yerine tr-TR-Standard-D (Erkek Sesi) kullanılıyor.
+    "tr": ("tr-TR", "tr-TR-Standard-D"), 
+    "zz": ("tr-TR", "tr-TR-Standard-D"), # Zazaca için özel bir kod tanımlıyoruz
 }
 
 # =================== YARDIMCI FONKSIYONLAR ===================
@@ -147,9 +148,7 @@ def llm_answer_with_history(user_input: str) -> str:
     """Konuşma geçmişi ile birlikte Gemini'ye soruyu gönderir."""
     chat = init_chat_session()
     
-    # >>>>>> DÜZELTME: MESAJIN İÇİNDE ZORLAYICI KOMUT EKLEME <<<<<<
     # Her mesaja Zazaca yanıt vermesi gerektiğini hatırlatan bir talimat ekliyoruz.
-    # Bu, LLM'in dil bağlamını her adımda Zazaca'ya zorlar.
     forced_input = f"{user_input} (Zaf muhîm: Cewabê mı **TENYA ZAZACA** bo.)"
 
     try:
@@ -163,9 +162,9 @@ def llm_answer_with_history(user_input: str) -> str:
 
 # =================== GOOGLE TTS (METINDEN KONUŞMA) ===================
 def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
-    """Google TTS kullanarak metni sese çevirir (Zazaca metin için Türkçe ses kullanılır)."""
+    """Google TTS kullanarak metni sese çevirir (Zazaca metin için Türkçe ERKEK sesi kullanılır)."""
     try:
-        # 'zz' (Zazaca) kodu yerine GOOGLE_TTS_VOICE'dan Türkçe ayarları çekiyoruz.
+        # >>>>>> DÜZELTME: Türkçe ERKEK ses ayarları çekiliyor <<<<<<
         lang, voice = GOOGLE_TTS_VOICE["tr"] 
         client = texttospeech.TextToSpeechClient()
         synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -250,7 +249,7 @@ if user_input:
     # 4. Yanıtı Ekrana Bas
     st.write(f"**Şerafettîn (Zere ra Vengê To):** {answer_text}")
 
-    # 5. Ses Sentezi (Zazaca metin, Türkçe ses ile)
+    # 5. Ses Sentezi (Zazaca metin, Türkçe ERKEK sesi ile)
     audio_bytes = synthesize_tts(answer_text, lang_code_tts)
     if audio_bytes:
         audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
