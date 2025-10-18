@@ -56,7 +56,7 @@ predefined_question_check1 = ["fişi nerede bunun?"]
 predefined_question_check2 = ["Tişörtünü versene benimki kirlide."]
 
 
-# >>>>>> DÜZELTME: KÜRTÇE (KURMANCÎ) ÇEVİRİLER <<<<<<
+# KÜRTÇE (KURMANCÎ) ÇEVİRİLER
 predefined_answer_identity = (
     "Ez? Şera, cana min. Lê di civatên fermî de dibêjin 'Şerafettin', dema kravat girêdide wisa dibe."
     " Erê, ez hestî me. Yanî, ji ber ku goştê min tune ye, ma mêjiyê min jî tune ye? "
@@ -74,12 +74,12 @@ predefined_answer_check = "Bila ez ambûlansekê bang bikim? Bila li ber derî a
 predefined_answer_check1 = "Ez bi şarjê dixebitim! Niha tu bûyî nexweşê alzheimerê? Ma te bi rastî bawer kir ku zîrekiya wekî min bi fîşê (fîşa elektrîkê) dixebite?"
 predefined_answer_check2 = "Dizê goristanê!"
 
-# >>>>>> DÜZELTME: PERSONA PROMPT'U KÜRTÇE'YE GEÇİRİLDİ <<<<<<
+# PERSONA PROMPT'U (KÜRTÇE CEVABI ZORLAYAN)
 PERSONA = (
     "ZAF GIRÎNG: Kî ji te bipirse, tu her dem **TENÊ BI KURDÎ (KURMANCÎ)** bersiv bide. Qet zimanekî din bikar neyne."
     "Tu Şerafettin î. Tu bi zimanekî îronîk, sarkastîk, zana û henokî diaxive, "
     "lê li ser her mijarê xwediyê zanyariyê ye. "
-    "Tu Çînî, Koreyî, Îngilîzî, Almanî û Tirkî pir baş dizanî. "
+    "Çînî, Koreyî, Îngilîzî, Almanî û Tirkî pir baş dizanî. "
     "Di bersivên xwe de henek, zîrekî û helwesta xwe ya piçûk xemsarî (piçûkxistin) hîs bike. "
     "Bifikirîne lê kêfxweş be. "
     "Tu her tim zimanê 'tu' (sen) bikar bîne; qet 'hûn' (siz) nebêje. "
@@ -94,23 +94,21 @@ PERSONA = (
     "Tu hestiyekî bi tîşorta reş î. "
     "Zaf girîng: Karakterê xwe û axaftinên berê ji bîr MEKE! Her dem lihevhatî û sarkastîk be. Dîroka axaftinê bîne ber çav.") 
 
-# >>>>>> DÜZELTME: KÜRTÇE TTS SES AYARLARI <<<<<<
+# >>>>>> DÜZELTME: TTS SES KODU 'ckb-IQ-Standard-A' YERİNE 'ckb-IQ-Standard-B' KULLANILDI <<<<<<
 GOOGLE_TTS_VOICE = {
-    # Kürtçe (Central Kurdish) - Soranî - Desteklenen ses örneği: 'ckb-IQ-chirp_2'
-    "ku": ("ckb-IQ", "ckb-IQ-Standard-A"), # Bir kadın sesi seçildi, eğer erkek sesini istersen Standard-C veya D deneyebilirsin.
+    # Kürtçe (Central Kurdish - Soranî). 'ckb-IQ-Standard-A' (Xwelet) li 'ckb-IQ-Standard-B' (Ji bo Şerafettîn) hat guhertin.
+    "ku": ("ckb-IQ", "ckb-IQ-Standard-B"), 
     "tr": ("tr-TR", "tr-TR-Standard-D"), 
-    "zz": ("tr-TR", "tr-TR-Standard-D"), # Zazaca (Artık kullanılmayacak ama güvenlik için bırakıldı)
 }
 
 # =================== YARDIMCI FONKSIYONLAR ===================
 
 def get_tts_lang_code(text: str) -> str:
-    """TTS için dil kodunu (küçük harf) belirler (Artık Kürtçe için 'ku' kullanacağız)."""
-    # LLM her zaman Kürtçe yanıt vereceği için TTS dil kodunu Kürtçe ('ku') döndürüyoruz.
+    """TTS için dil kodunu (küçük harf) belirler (Kürtçe için 'ku' kullanır)."""
     return "ku"
 
 def pick_predefined(user_text_lower: str) -> Optional[str]:
-    # --- Önceden tanımlanmış cevaplar (Kürtçe yanıt verecek şekilde güncellendi) ---
+    # --- Önceden tanımlanmış cevaplar ---
     for q in identity_questions:
         if q in user_text_lower:
             return predefined_answer_identity
@@ -174,11 +172,8 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
 
 # GÜNCELLENMİŞ FONKSIYON: Sesi metne çevirir
 def transcribe_audio(audio_bytes: bytes) -> str:
-    """Google Speech-to-Text kullanarak sesi metne çevirir (Türkçe'den Kurmancî'ye geçiş)."""
+    """Google Speech-to-Text kullanarak sesi Kürtçe metne çevirir (ckb-IQ)."""
     try:
-        # >>>>>> DÜZELTME: Sesi Kurmancî veya Soranî olarak tanıma için Kürtçe dil kodu kullanıldı <<<<<<
-        # Not: Google STT Central Kurdish (ckb-IQ) ve Kurmanji (kmr-TR) destekleyebilir. 
-        # API dokümanlarında Soranice (ckb-IQ) yaygın görüldüğü için onu kullanıyoruz.
         language_code_stt = "ckb-IQ" 
         client = google.cloud.speech.SpeechClient()
         audio = google.cloud.speech.RecognitionAudio(content=audio_bytes)
