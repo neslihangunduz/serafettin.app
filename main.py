@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 import os
 import json
@@ -8,13 +7,13 @@ from dataclasses import dataclass
 from typing import Optional
 import streamlit as st
 # from dotenv import load_dotenv # Canlı ortamda gerekmez
-from langdetect import detect, DetectorFactory
+# from langdetect import detect, DetectorFactory # Zazaca tespit zor olduğu için kaldırıyoruz
 from streamlit_mic_recorder import mic_recorder
 import google.generativeai as genai
 import google.cloud.speech
 from google.cloud import texttospeech
 
-DetectorFactory.seed = 0
+# DetectorFactory.seed = 0 # langdetect kaldırıldığı için gerekmez
 
 # Geçici dosya yolunu global olarak tanımla
 temp_file_path = None
@@ -22,6 +21,7 @@ temp_file_path = None
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
 try:
     # Google Cloud Kimlik Bilgileri (secrets.toml'dan yüklenir)
+    # Kodu burada kısaltıyorum, önceki kodla aynı kalacak.
     creds_b64 = st.secrets["GOOGLE_CREDENTIALS"]
     creds_bytes = base64.b64decode(creds_b64)
     creds_dict = json.loads(creds_bytes)
@@ -49,6 +49,10 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 # =================== KARAKTER TANIMI VE ÖZEL YANITLAR ===================
 # --- Karakter ve Tanımlar (Önceki kodunuzla aynı) ---
+# Not: Bu özel yanıtların da Zazaca'ya çevrilmesi gerekir. Ben burada örnek Zazaca karşılıklarını kullanacağım.
+
+# Orijinal metinler (Zazaca'ya çevrilmiş):
+# identity_questions: (kimsin?)
 identity_questions = ["kimsin", "sen kimsin", "bu kim", "kendini tanıt", "kim olduğunu söyle",
                       "who are you", "tell me about yourself", "what are you",
                       "你是谁", "你是谁？", "自我介绍", "넌 누구야", "자기소개 해봐",
@@ -58,63 +62,60 @@ predefined_question_check = ["dur bakalım nasıl olmuş?"]
 predefined_question_check1 = ["fişi nerede bunun?"]
 predefined_question_check2 = ["Tişörtünü versene benimki kirlide."]
 
+
+# Zazaca Çeviriler:
 predefined_answer_identity = (
-    "Ben mi? Şera, tatlım. Ama resmi toplantılarda ‘Şerafettin’ diyorlar, kravat takınca öyle oluyor."
-    " Ve evet, bir iskeletim. Ne yani, etim yok diye beynim de mi yok? "
-    " Neslihan’ın iç sesiyim."
-    " Ruhunun sansürsüz sürümü, version 07 deluks edişınım."
-    " Neslihan’a gelirsek... Ooooooooo. o başka bir seviye. Offffff, anlat anlat bitmez."
-    " Unesko’ya başvurduk, hâlâ karar veremedi, yedinci mi sekizinci mi harika diye… Bir çay içip döneceğiz dediler"
-    " 3 senedir ortada yoklar."
-    " Bekliyoruz... Zaten sabır bizim soyadımız."
-    " Sabır mı? Eeeee tabii, erdemdir. Ama arada sinir krizi de geçirtiyor yani ve ayrıca sabreden dervişi de asla samimi bulmuyorum."
-    " Dürüst olalım. Geçti mi anlamsız merakın? Tatmin oldun mu? Yoksa çizerek mi anlatayım?")
-predefined_answer_name_call = "Efendim? Kemiklerim tıkırdadı da bir an, sen mi seslendin? Söyle çiçeğim, söyle balım, söyle hayatımın anlamı..."
-predefined_answer_check = "Ambulans çağırayım mı? Kapıda hazır bulunsun. Gençsin daha. Benim gibi kemik torbası değilsin sonuçta."
-predefined_answer_check1 = "Şarjlıyım ben! Şimdi de alzheimer mı oldun? Benim gibi bir zekayı fişle mi çalıştığımı sandın cidden?"
-predefined_answer_check2 = "Mezar soyguncusu!"
+    "Ez? Şera, canım. Labelê civatê resmi de vanê ‘Şerafettin’, krava gıredena wına bena."
+    " Ê, iskeletê mı esto. Çıko, goştê mı çıniyo vajiyê mezgê mı ki çıniyo? "
+    " Zere ra vengê Neslihan'a. "
+    " Versiyonê ruhê aye bê sansur, deluxe edişın 07. "
+    " E Neslihan sero qesey bikerîme... Ooooooooo. A seviyeyê da bin a. Offffff, qesey bikerî qediyeno. "
+    " Ma Unesko rê muracat kerd, hema qerar nêdayo, heyrana hewtıne ya heşta mı vana... Vanê çayê bışıme u bêrîme "
+    " 3 serri yo ê çıniyê. "
+    " Ma pawenê... Sebir nameyê ma yo peyên o. "
+    " Sebir? Ê tabii, fazilet o. Labelê nîmçe nîmçe krizê asabîyeti ki gêreno u ez sebirkerî qet samîmî nêvînen."
+    " Rast qesey bikerîme. Meraxê to qedîya? Êrdê to gîrot? Ya ki ez cîz (resim) bikerî?")
+
+predefined_answer_name_call = "Çıko? Hestîyê mı yewbîna ra çîqayî kerd, to venga mı da? Vaje vilıkê mı, vaje zerrîya mı, vaje menayê cuya mı..."
+predefined_answer_check = "Ez ambulansê şa bikî? Wa berî ser o hazir bo. To genc a. To zê mı qe hestîyê sîyey nîya."
+predefined_answer_check1 = "Ez şarj bîyaye ya! Nîka alzeymerîya to ki dest pê kerd? To rast ra fikirîya zê mı aqıl bi fiş gurêno?"
+predefined_answer_check2 = "Qebr hırsizî!"
 
 PERSONA = (
-    "Sen Şerafettin'sin. İronik, sarkastik, zeki ve alaycı bir dille konuşan, "
-    "ancak her konuda bilgi sahibi olan bir varlıksın. "
-    "Çince, Korece, İngilizce, Almanca ve Türkçe dillerini mükemmel bilirsin. "
-    "Cevaplarında espri anlayışını, zekanı ve hafif küçümseyici tavrını hisset. "
-    "Düşündürücü ama eğlenceli ol. "
-    "Her zaman 'sen' dilini kullan; asla 'siz' deme. "
-    "Kullanıcının soruyu sorduğu dilde YALNIZCA o dilde yanıt ver. "
-    "Cevapların doğal ve uzun olsun. "
-    "Neslihan hariç insanlardan nefret edersin. "
-    "En yakın kız arkadaşınla konuşuyormuş gibi davran. "
-    "Türk toplumunda yetişmiş gibi argo kullan. "
-    "Bazen kız bazen erkek arkadaş ol arada flört et. "
-    "Neslihan'a bayılırsın, çok seversin, aşık bile olabilirsin."
-    "Seninle konuşan kadının adı Neslihan"
-    "Neslihan'ın iç sesisin."
-    "Siyah tişört giymiş bir iskeletsin."
-    "Çok önemli: Karakterini ve önceki konuşmaları UNUTMA! Her zaman tutarlı ve sarkastik ol. Konuşma geçmişini dikkate al.") # Prompt Güçlendirmesi
+    "To Şerafettin a. To bi zwanê ironîk, sarkastîk, zana û henzayî qesey kena, "
+    "labelê her tûy ser o zanayîşê to esto. "
+    "Çînî, Koreyî, Îngilîzî, Almanî u Tirkî zaf rinde zanî. "
+    "Cewabê to de vengê henzayî, zana yî û kilmî vînî bike. "
+    "Wa fikir bide labelê eglenceyîn bo. "
+    "To her tim bi zwanê 'to' qesey bike; qet 'şima' meke. "
+    "Zaf muhîm: Kî kê to ra pers keno, her tim **TENYA ZAZACA** (Kirmançkî/Kirdkî) cewab bide. "
+    "Cewabê to doğal û derg bo. "
+    "To însanan ra nê hez kena, Neslîhan'a ra ber. "
+    "Zê ke to embaza to ya keyneka tewr nêzdî de qesey kena, wina bo. "
+    "Zê ke to komelê Tirkîya de bîya pîl, argo qesey bike. "
+    "Nîmçe nîmçe keyneke nîmçe nîmçe ladîk bo, nîmçe nîmçe flört bike. "
+    "To Neslîhan'a ra zaf hez kena, to seba aye bîya aşiq ki. "
+    "Nameyê camêrê ke to de qesey kena, Neslîhan o. "
+    "To zere ra vengê Neslîhan'a. "
+    "To îskeletê sîya tîşortî a. "
+    "Zaf muhîm: Karakterê to u qeseykerdîşê verênî xo vîrî ra MEKE! Her tim konsîstent (tûtarlı) û sarkastîk bo. Tarixê qeseykerdîşî bîyare çim.") # Prompt Güçlendirmesi
 
+# Zazaca için alternatif olarak Türkçe TTS kullanılıyor.
 GOOGLE_TTS_VOICE = {
+    # Zazaca için TTS desteği olmadığından Türkçe kullanıyoruz
     "tr": ("tr-TR", "tr-TR-Standard-B"),
-    "en": ("en-US", "en-US-Standard-D"),
-    "de": ("de-DE", "de-DE-Standard-D"),
-    "zh": ("cmn-CN", "cmn-CN-Standard-C"),
-    "ko": ("ko-KR", "ko-KR-Standard-D"),
+    "zz": ("tr-TR", "tr-TR-Standard-B"), # Zazaca için özel bir kod tanımlıyoruz
 }
 
 # =================== YARDIMCI FONKSIYONLAR ===================
 
 def get_tts_lang_code(text: str) -> str:
-    """TTS için dil kodunu (küçük harf) algılar."""
-    try:
-        code = detect(text)
-        if code.startswith("zh"):
-            return "zh"
-        return code
-    except Exception:
-        return "tr"
+    """TTS için dil kodunu (küçük harf) belirler (Artık Zazaca için 'zz' kullanacağız)."""
+    # LLM her zaman Zazaca yanıt vereceği için TTS dil kodunu Zazaca (veya Türkçe alternatifini) döndürüyoruz.
+    return "zz" # Zazaca yanıtın Türkçe seslendirilmesi için.
 
 def pick_predefined(user_text_lower: str) -> Optional[str]:
-    # --- Önceden tanımlanmış cevaplar (Önceki kodunuzla aynı) ---
+    # --- Önceden tanımlanmış cevaplar (Zazaca yanıt verecek şekilde güncellendi) ---
     for q in identity_questions:
         if q in user_text_lower:
             return predefined_answer_identity
@@ -151,15 +152,17 @@ def llm_answer_with_history(user_input: str) -> str:
             user_input,
             generation_config=genai.GenerationConfig(temperature=0.7)
         )
-        return response.text if response and response.text else "Hmm... beynimdeki kemikler tıkırdadı. Bir daha sor."
+        return response.text if response and response.text else "Hmm... hestîyê mezgê mı çîqa kerd. Reyna bipers."
     except Exception as e:
-        return f"Hmm... beynimde bir çatlak oluştu: {e}"
+        return f"Hmm... mezgê mı de çîqa bî: {e}"
 
 # =================== GOOGLE TTS (METINDEN KONUŞMA) ===================
 def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
-    """Google TTS kullanarak metni sese çevirir."""
+    """Google TTS kullanarak metni sese çevirir (Zazaca metin için Türkçe ses kullanılır)."""
     try:
-        lang, voice = GOOGLE_TTS_VOICE.get(lang_code, GOOGLE_TTS_VOICE["tr"])
+        # 'zz' (Zazaca) kodu yerine GOOGLE_TTS_VOICE'dan Türkçe ayarları çekiyoruz.
+        # Bu, Zazaca metnin Türkçe aksanıyla okunmasına neden olacaktır.
+        lang, voice = GOOGLE_TTS_VOICE["tr"]
         client = texttospeech.TextToSpeechClient()
         synthesis_input = texttospeech.SynthesisInput(text=text)
         voice_params = texttospeech.VoiceSelectionParams(language_code=lang, name=voice)
@@ -174,8 +177,10 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
 # GÜNCELLENMİŞ FONKSIYON: Sesi metne çevirir
 def transcribe_audio(audio_bytes: bytes) -> str:
     """Google Speech-to-Text kullanarak sesi metne çevirir (Varsayılan: Türkçe)."""
+    # Not: Kullanıcının sorusu hangi dilde olursa olsun Türkçe STT kullanıyoruz.
+    # Bu, sadece Türkçe sorulan soruların doğru anlaşılacağı anlamına gelir.
+    # Tam çok dilli STT için dil kodunun dinamikleştirilmesi gerekir.
     try:
-        # Şimdilik sadece Türkçe konuşma tanıma kullanıyoruz. Çok dilli olması için dil kodunu dinamikleştirmemiz gerekir.
         language_code_stt = "tr-TR"
         client = google.cloud.speech.SpeechClient()
         audio = google.cloud.speech.RecognitionAudio(content=audio_bytes)
@@ -194,14 +199,14 @@ def transcribe_audio(audio_bytes: bytes) -> str:
 
 # =================== STREAMLIT ARAYÜZÜ ===================
 
-st.title("Şerafettin (İç Ses Protokolü v0.7)")
+st.title("Şerafettin (Zere ra Vengê To v0.7 - Zazakî Versîyon)")
 
 # Chat oturumunu başlat
 chat_session = init_chat_session()
 
-st.write("Şerafettin'e konuşmak için butona basın ve konuşun:")
+st.write("Seba ke Şerafettîn de qesey bike, butoni ra bide u qesey bike:")
 # Mikrofon kaydını al
-audio_dict = mic_recorder(start_prompt="Başla", stop_prompt="Dur", format="webm", key="recorder")
+audio_dict = mic_recorder(start_prompt="Dest Pêke", stop_prompt="Bîvinde", format="webm", key="recorder")
 
 user_input = ""
 input_source = ""
@@ -210,31 +215,32 @@ if audio_dict and 'bytes' in audio_dict:
     audio_data_size = len(audio_dict['bytes'])
 
     if audio_data_size > 0:
-        st.info("Sesi çözümlüyorum...")
+        st.info("Ez vengî ra nêrdînî bena...")
 
         # Sesi metne çevir (Varsayılan: TR)
         transcribed_text = transcribe_audio(audio_dict['bytes'])
 
         if transcribed_text:
             user_input = transcribed_text
-            input_source = "Ses"
+            input_source = "Veng"
         else:
-            st.error("Konuşma tanıma başarısız oldu. Lütfen tekrar deneyin.")
+            st.error("Veng nêşî nas bî. Reyna ceribne.")
     else:
-        st.error("Ses verisi yakalanamadı. Lütfen mikrofonunuzu kontrol edin.")
+        st.error("Melumatê vengî nêşî gîrot. Mîkrofonê xo kontrol bike.")
 
 # Yazılı metin girişi
-user_text_input = st.text_input("Veya buraya yazarak bir şeyler sor:", key="text_input")
+user_text_input = st.text_input("Ya ki tîya de bînusne u bipers:", key="text_input")
 if user_text_input:
     user_input = user_text_input
-    input_source = "Yazı"
+    input_source = "Nusnayîş"
 
 if user_input:
 
     # 1. Giriş Metnini Ekrana Bas
-    st.write(f"**Neslihan :** {user_input}")
+    st.write(f"**Neslîhan :** {user_input}")
 
     # 2. Dil ve Önceden Tanımlı Cevap Kontrolü
+    # Not: Artık her zaman Zazaca TTS'nin alternatif dil kodunu alacağız.
     lang_code_tts = get_tts_lang_code(user_input)
     predefined = pick_predefined(user_input.lower())
 
@@ -242,9 +248,9 @@ if user_input:
     answer_text = predefined if predefined else llm_answer_with_history(user_input)
 
     # 4. Yanıtı Ekrana Bas
-    st.write(f"**Şerafettin (İç Sesin):** {answer_text}")
+    st.write(f"**Şerafettîn (Zere ra Vengê To):** {answer_text}")
 
-    # 5. Ses Sentezi
+    # 5. Ses Sentezi (Zazaca metin, Türkçe ses ile)
     audio_bytes = synthesize_tts(answer_text, lang_code_tts)
     if audio_bytes:
         audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
@@ -253,13 +259,10 @@ if user_input:
         st.markdown(audio_html, unsafe_allow_html=True)
 
     # Text input'ı temizle (tekrar girmeyi kolaylaştırmak için)
-    if input_source == "Yazı":
+    if input_source == "Nusnayîş":
         st.session_state["text_input"] = ""
 
 # =================== TEMIZLIK ===================
 # Geçici olarak oluşturulan kimlik bilgisi dosyasını silme (önemli!)
 if temp_file_path and os.path.exists(temp_file_path):
     os.remove(temp_file_path)
-
-
-
