@@ -149,7 +149,7 @@ def llm_answer_with_history(user_input: str) -> str:
     try:
         response = chat.send_message(
             user_input,
-            generation_config=genai.GenerationConfig(temperature=0.7)
+            generation_config=genai.GenerationConfig(temperature=0.7, max_output_tokens=1000)
         )
         return response.text if response and response.text else "Hmm... beynimdeki kemikler tıkırdadı. Bir daha sor."
     except Exception as e:
@@ -260,5 +260,6 @@ if user_input:
 # Geçici olarak oluşturulan kimlik bilgisi dosyasını silme (önemli!)
 if temp_file_path and os.path.exists(temp_file_path):
     os.remove(temp_file_path)
+
 
 
