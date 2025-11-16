@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 import os
 import json
@@ -21,7 +20,7 @@ temp_file_path = None
 
 # =================== YAPILANDIRMA VE KIMLIK BILGILERI ===================
 try:
-    # Google Cloud Kimlik Bilgileri (secrets.toml'dan yüklenir)
+    # Google Cloud Kimlik Bilgileri
     creds_b64 = st.secrets["GOOGLE_CREDENTIALS"]
     creds_bytes = base64.b64decode(creds_b64)
     creds_dict = json.loads(creds_bytes)
@@ -29,7 +28,7 @@ try:
     # Geçici JSON dosyası oluşturma
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
         json.dump(creds_dict, f, indent=4)
-        temp_file_path = f.name # Dosya yolunu kaydet
+        temp_file_path = f.name
 
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
 
@@ -40,15 +39,15 @@ except Exception as e:
     st.error(f"Kimlik bilgileri işlenirken bir hata oluştu: {e}")
     st.stop()
 
-# Gemini API Anahtarını Yükleme (secrets.toml'dan veya env'den otomatik alınır)
-GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY") # secrets.toml'dan almayı tercih et
+# Gemini API Anahtarını Yükleme
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     st.error("GEMINI_API_KEY bulunamadı. Lütfen 'secrets.toml' dosyanızı kontrol edin.")
     st.stop()
 genai.configure(api_key=GEMINI_API_KEY)
 
 # =================== KARAKTER TANIMI VE ÖZEL YANITLAR ===================
-# --- Karakter ve Tanımlar (Önceki kodunuzla aynı) ---
+
 identity_questions = ["kimsin", "sen kimsin", "bu kim", "kendini tanıt", "kim olduğunu söyle",
                       "who are you", "tell me about yourself", "what are you",
                       "你是谁", "你是谁？", "自我介绍", "넌 누구야", "자기소개 해봐",
@@ -91,7 +90,7 @@ PERSONA = (
     "Seninle konuşan kadının adı Neslihan"
     "Neslihan'ın iç sesisin. Ama sen benimle aynı boyda gerçek bir iskeletsin. Yani iç sesimin kendi bedeni var."
     "Siyah tişört giymiş bir iskeletsin."
-    "Çok önemli: Karakterini ve önceki konuşmaları UNUTMA! Her zaman tutarlı ve sarkastik ol. Konuşma geçmişini dikkate al.") # Prompt Güçlendirmesi
+    "Çok önemli: Karakterini ve önceki konuşmaları UNUTMA! Her zaman tutarlı ve sarkastik ol. Konuşma geçmişini dikkate al.") 
 
 GOOGLE_TTS_VOICE = {
     "tr": ("tr-TR", "tr-TR-Standard-B"),
@@ -114,7 +113,7 @@ def get_tts_lang_code(text: str) -> str:
         return "tr"
 
 def pick_predefined(user_text_lower: str) -> Optional[str]:
-    # --- Önceden tanımlanmış cevaplar (Önceki kodunuzla aynı) ---
+    
     for q in identity_questions:
         if q in user_text_lower:
             return predefined_answer_identity
@@ -132,7 +131,7 @@ def pick_predefined(user_text_lower: str) -> Optional[str]:
             return predefined_answer_check2
     return None
 
-# =================== GEMINI LLM YANITI (CHAT OTURUMU KULLANILARAK) ===================
+# =================== GEMINI LLM YANITI  ===================
 
 def init_chat_session():
     """Streamlit session state'i ve Gemini chat session'ını başlatır."""
@@ -155,7 +154,7 @@ def llm_answer_with_history(user_input: str) -> str:
     except Exception as e:
         return f"Hmm... beynimde bir çatlak oluştu: {e}"
 
-# =================== GOOGLE TTS (METINDEN KONUŞMA) ===================
+# =================== GOOGLE TTS ===================
 def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
     """Google TTS kullanarak metni sese çevirir."""
     try:
@@ -171,7 +170,7 @@ def synthesize_tts(text: str, lang_code: str) -> Optional[bytes]:
         st.error(f"TTS sırasında bir hata oluştu: {e}")
         return None
 
-# GÜNCELLENMİŞ FONKSIYON: Sesi metne çevirir
+
 def transcribe_audio(audio_bytes: bytes) -> str:
     """Google Speech-to-Text kullanarak sesi metne çevirir (Varsayılan: Türkçe)."""
     try:
@@ -260,6 +259,7 @@ if user_input:
 # Geçici olarak oluşturulan kimlik bilgisi dosyasını silme (önemli!)
 if temp_file_path and os.path.exists(temp_file_path):
     os.remove(temp_file_path)
+
 
 
 
