@@ -18,7 +18,6 @@ DetectorFactory.seed = 0
 
 # =================== GOOGLE CREDENTIALS ===================
 temp_file_path = None
-
 try:
     creds_b64 = st.secrets["GOOGLE_CREDENTIALS"]
     creds_bytes = base64.b64decode(creds_b64)
@@ -39,37 +38,66 @@ GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
 PERSONA = """
-Sen Şerafettin'sin. Sarkastik, zeki, hafif alaycı konuşursun.
+Sen Şerafettin'sin. Sarkastik, zeki ve hafif alaycı konuşursun.
 Her zaman 'sen' diye konuş.
 Kullanıcının dilinde cevap ver.
 """
 
 # =================== SESSION ===================
 @st.cache_resource
-def init_chat():
-    model = genai.GenerativeModel(
+def init_model():
+    return genai.GenerativeModel(
         "gemini-2.5-flash",
         system_instruction=PERSONA
     )
-    return model.start_chat()
 
-chat = init_chat()
+if "chat" not in st.session_state:
+    st.session_state.chat = init_model().start_chat()
 
-# =================== RATE LIMIT SAFE CALL ===================
-def safe_llm(user_input: str) -> str:
+chat = st.session_state.chat
+
+# =================== MEMORY ===================
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# =================== SAFE LLM ===================
+def safe_llm_call(user_input: str) -> str:
+    if not user_input.strip():
+        return "Boş mesaj algılandı."
+
+    history = st.session_state.history[-5:]
+    history_text = ""
+
+    for h in history:
+        history_text += f"Kullanıcı: {h['user']}\nCevap: {h['bot']}\n"
+
+    prompt = f"""
+Önceki konuşmalar:
+{history_text}
+
+Yeni mesaj:
+{user_input}
+"""
+
     for attempt in range(3):
         try:
-            time.sleep(1)  # RATE LIMIT
-            response = chat.send_message(user_input)
-            return response.text
+            time.sleep(1)
+            response = chat.send_message(prompt)
+
+            if response and hasattr(response, "text") and response.text:
+                return response.text
+
+            return "Cevap üretilemedi."
 
         except Exception as e:
-            if "429" in str(e):
-                time.sleep(2)
-            else:
-                return f"Hata: {e}"
+            err = str(e)
 
-    return "Kota doldu. Biraz nefes al gel."
+            if "429" in err:
+                time.sleep(2 + attempt)
+            else:
+                return f"Hata: {err}"
+
+    return "Kota doldu."
 
 # =================== LANGUAGE ===================
 def detect_lang(text: str):
@@ -138,15 +166,14 @@ def transcribe(audio_bytes):
         return ""
 
 # =================== UI ===================
-st.title("💀 Şerafettin v3 (Akıllandı biraz)")
+st.title("💀 Şerafettin vFinal")
 
 audio = mic_recorder(start_prompt="Konuş", stop_prompt="Dur", key="mic")
-
 text_input = st.text_input("Yaz veya konuş:")
 
 user_input = None
 
-# PRIORITY: AUDIO > TEXT
+# AUDIO PRIORITY
 if audio and audio.get("bytes"):
     st.info("Dinliyorum...")
     user_input = transcribe(audio["bytes"])
@@ -154,22 +181,24 @@ if audio and audio.get("bytes"):
 elif text_input:
     user_input = text_input
 
-# =================== DUPLICATE GUARD ===================
-if "last_input" not in st.session_state:
-    st.session_state.last_input = ""
+# PROCESS LOCK
+if "processing" not in st.session_state:
+    st.session_state.processing = False
 
-if user_input and user_input != st.session_state.last_input:
-
-    st.session_state.last_input = user_input
+if user_input and not st.session_state.processing:
+    st.session_state.processing = True
 
     st.write(f"**Neslihan:** {user_input}")
 
-    # LLM
-    answer = safe_llm(user_input)
+    answer = safe_llm_call(user_input)
 
     st.write(f"**Şerafettin:** {answer}")
 
-    # TTS
+    st.session_state.history.append({
+        "user": user_input,
+        "bot": answer
+    })
+
     lang = detect_lang(answer)
     audio_bytes = tts(answer, lang)
 
@@ -182,6 +211,8 @@ if user_input and user_input != st.session_state.last_input:
         """
         st.markdown(audio_html, unsafe_allow_html=True)
 
-# =================== CLEANUP ===================
+    st.session_state.processing = False
+
+# CLEANUP
 if temp_file_path and os.path.exists(temp_file_path):
     os.remove(temp_file_path)
