@@ -36,7 +36,7 @@ temp_file_path = None
 
 try:
 
-    # Google Cloud Kimlik Bilgileri
+    
 
     creds_b64 = st.secrets["GOOGLE_CREDENTIALS"]
 
