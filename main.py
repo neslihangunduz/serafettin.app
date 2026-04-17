@@ -118,7 +118,7 @@ def pick_predefined(user_text_lower: str) -> Optional[str]:
 def init_chat_session():
     if "chat_session" not in st.session_state:
         # gemini-2.0-flash veya pro kullanılabilir (2.5 henüz stabil olmayabilir)
-        chat_model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=PERSONA)
+        chat_model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=PERSONA)
         st.session_state["chat_session"] = chat_model.start_chat(history=[])
     return st.session_state["chat_session"]
 
